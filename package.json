@@ -1,0 +1,19 @@
+{
+  "name": "shell-scripts-manager",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "machingclee <machingclee@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "prisma": "4.8.0"
+  },
+  "dependencies": {
+    "@prisma/client": "4.8.0"
+  },
+  "scripts": {
+    "migrate:dev": "prisma migrate dev",
+    "migrate:create-only": "prisma migrate dev --create-only",
+    "build": "cargo build",
+    "studio": "npx prisma studio"
+  }
+}
