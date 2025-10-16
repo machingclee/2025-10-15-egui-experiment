@@ -19,6 +19,6 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "Shell Script Managers",
         native_options,
-        Box::new(|cc| Ok(Box::new(eframe_template::App::new(cc)))),
+        Box::new(|cc| Ok(Box::new(shall_script_manager::App::new(cc)))),
     )
 }
