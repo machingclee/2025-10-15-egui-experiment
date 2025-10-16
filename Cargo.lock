@@ -5790,13 +5790,24 @@ dependencies = [
 ]
 
 [[package]]
-name = "shall_script_manager"
+name = "sharded-slab"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f40ca3c46823713e0d4209592e8d6e826aa57e928f09752619fc696c499637f6"
+dependencies = [
+ "lazy_static",
+]
+
+[[package]]
+name = "shell_script_manager"
 version = "0.1.0"
 dependencies = [
+ "crossbeam",
  "eframe",
  "egui",
  "env_logger",
  "font-loader",
+ "lazy_static",
  "log",
  "prisma-client-rust",
  "prisma-client-rust-cli",
@@ -5804,15 +5815,6 @@ dependencies = [
  "tokio",
  "wasm-bindgen-futures",
  "web-sys",
-]
-
-[[package]]
-name = "sharded-slab"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f40ca3c46823713e0d4209592e8d6e826aa57e928f09752619fc696c499637f6"
-dependencies = [
- "lazy_static",
 ]
 
 [[package]]

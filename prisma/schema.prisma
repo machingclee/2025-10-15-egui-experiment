@@ -18,6 +18,8 @@ model scripts_folder {
   created_at                    Float                           @default(dbgenerated("(CAST((julianday('now') - 2440587.5) * 86400000.0 AS REAL))"))
   created_at_hk                 String                          @default(dbgenerated("(strftime('%Y-%m-%d %H:%M:%S', datetime('now', '+8 hours')))"))
   rel_scriptsfolder_shellscript rel_scriptsfolder_shellscript[]
+
+  @@index([id])
 }
 
 model rel_scriptsfolder_shellscript {
@@ -28,6 +30,9 @@ model rel_scriptsfolder_shellscript {
   created_at_hk     String         @default(dbgenerated("(strftime('%Y-%m-%d %H:%M:%S', datetime('now', '+8 hours')))"))
   shell_script      shell_script   @relation(fields: [shell_script_id], references: [id])
   scripts_folder    scripts_folder @relation(fields: [scripts_folder_id], references: [id])
+
+  @@index([scripts_folder_id])
+  @@index([shell_script_id])
 }
 
 model shell_script {
@@ -38,4 +43,6 @@ model shell_script {
   created_at                    Float                           @default(dbgenerated("(CAST((julianday('now') - 2440587.5) * 86400000.0 AS REAL))"))
   created_at_hk                 String                          @default(dbgenerated("(strftime('%Y-%m-%d %H:%M:%S', datetime('now', '+8 hours')))"))
   rel_scriptsfolder_shellscript rel_scriptsfolder_shellscript[]
+
+  @@index([id])
 }

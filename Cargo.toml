@@ -1,5 +1,5 @@
 [package]
-name = "shall_script_manager"
+name = "shell_script_manager"
 version = "0.1.0"
 authors = ["Emil Ernerfeldt <emil.ernerfeldt@gmail.com>"]
 edition = "2024"
@@ -13,6 +13,8 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 [dependencies]
 prisma-client-rust = { git = "https://github.com/Brendonovich/prisma-client-rust", tag = "0.6.11", default-features = false, features = ["sqlite", "migrations"] }
 tokio = { version = "1.0", features = ["full"] }
+lazy_static = "1.4"
+crossbeam = "0.8"
 egui = "0.33.0"
 eframe = { version = "0.33.0", default-features = false, features = [
     "accesskit",     # Make egui compatible with screen readers. NOTE: adds a lot of dependencies.
