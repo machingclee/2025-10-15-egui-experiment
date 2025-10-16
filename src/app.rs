@@ -1,21 +1,14 @@
-use crate::component::{folder_col::FolderPanel, scripts_col::scripts_col, top_menu::top_menu};
+use crate::component::folder_col::folder_col;
+use crate::component::{scripts_col::scripts_col, top_menu::top_menu};
 use crate::db::get_db::get_db;
 use crate::domain::folder;
 
 #[derive(serde::Deserialize, serde::Serialize)]
-pub struct App {
-    folder_command_handler: folder::folder_command_handler::FolderCommandHandler,
-    folder_event_handler: folder::folder_event_handler::FolderEventHandler,
-    folder_panel: FolderPanel,
-}
+pub struct App {}
 
 impl Default for App {
     fn default() -> Self {
-        Self {
-            folder_command_handler: folder::folder_command_handler::FolderCommandHandler::new(),
-            folder_event_handler: folder::folder_event_handler::FolderEventHandler::new(),
-            folder_panel: FolderPanel::new(),
-        }
+        Self {}
     }
 }
 
@@ -58,9 +51,8 @@ impl eframe::App for App {
                 },
             }
         }
-
         top_menu(ctx);
-        self.folder_panel.show(ctx);
+        folder_col(ctx);
         scripts_col(ctx);
     }
 }
