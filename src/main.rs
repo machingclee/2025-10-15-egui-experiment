@@ -1,19 +1,53 @@
 #![warn(clippy::all, rust_2018_idioms)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
-fn main() -> eframe::Result {
-    env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
+fn main() -> eframe::Result<()> {
+    // Choose database location based on build mode
+    let db_path = if cfg!(debug_assertions) {
+        // In debug mode, use current directory for easier development
+        std::env::current_dir().unwrap().join("database.db")
+    } else {
+        // In release mode, use proper app data directory
+        let app_data_dir = dirs::data_dir()
+            .unwrap_or_else(|| std::env::current_dir().unwrap())
+            .join("ShellScriptManager");
+
+        // Create directory if it doesn't exist
+        std::fs::create_dir_all(&app_data_dir).ok();
+
+        app_data_dir.join("database.db")
+    };
+
+    let db_url = format!("file:{}", db_path.display());
 
     let rt = tokio::runtime::Runtime::new().unwrap();
     shell_script_manager::RT_HANDLE
         .set(rt.handle().clone())
         .unwrap();
 
-    // Initialize global Prisma client
     rt.block_on(async {
-        shell_script_manager::PRISMA_CLIENT
-            .set(shell_script_manager::prisma::new_client().await.unwrap())
-            .unwrap();
+        match shell_script_manager::prisma::new_client_with_url(&db_url).await {
+            Ok(client) => {
+                // Initialize database schema automatically for desktop app
+                if let Err(e) = shell_script_manager::db::get_db::initialize_database(&client).await
+                {
+                    eprintln!("Failed to initialize database: {}", e);
+                    eprintln!("Please check database permissions or file path");
+                    std::process::exit(1);
+                }
+
+                shell_script_manager::PRISMA_CLIENT.set(client).unwrap();
+                println!("Database connection established successfully");
+            }
+            Err(e) => {
+                eprintln!("Failed to connect to database: {}", e);
+                eprintln!("Please ensure the database exists by running: npm run migrate:dev");
+                eprintln!(
+                    "If deploying to production, run migrations as part of your deployment process."
+                );
+                std::process::exit(1);
+            }
+        }
     });
 
     // Initialize event system

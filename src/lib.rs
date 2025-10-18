@@ -11,15 +11,41 @@ where
     RT_HANDLE.get().unwrap().spawn(future);
 }
 
+pub fn run_terminal_command(command: String) {
+    spawn_task(async move {
+        let output = tokio::process::Command::new("sh")
+            .arg("-c")
+            .arg(&command)
+            .output()
+            .await;
+        match output {
+            Ok(output) => {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                println!("Command executed: {}", command);
+                if !stdout.is_empty() {
+                    println!("Output: {}", stdout);
+                }
+                if !stderr.is_empty() {
+                    eprintln!("Error: {}", stderr);
+                }
+            }
+            Err(e) => eprintln!("Failed to execute command: {:?}", e),
+        }
+    });
+}
+
 pub fn send_event(message: AppMessage) {
     let _ = EVENT_SENDER.get().unwrap().send(message);
 }
 
 pub fn dispatch_folder_event(event: FolderEvent) {
+    println!("Dispatching folder event: {:?}", event);
     send_event(AppMessage::Event(AppEvent::Folder(event)));
 }
 
 pub fn dispatch_folder_command(command: FolderCommand) {
+    println!("Dispatching folder command: {:?}", command);
     send_event(AppMessage::Command(AppCommand::Folder(command)));
 }
 
