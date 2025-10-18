@@ -6,6 +6,7 @@ use crate::db::get_db::get_db;
 pub enum FolderEvent {
     FolderAdded { name: String },
     FolderSelected { id: i32 },
+    FolderDeleted { id: i32 },
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -37,6 +38,9 @@ impl FolderEventHandler {
             }
             FolderEvent::FolderSelected { id } => {
                 println!("Folder selected event received for folder id: {}", id);
+            }
+            FolderEvent::FolderDeleted { id } => {
+                println!("Folder deleted event received for folder id: {}", id);
             }
         };
     }

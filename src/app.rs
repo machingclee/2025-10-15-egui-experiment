@@ -1,14 +1,19 @@
-use crate::component::folder_col::folder_col;
-use crate::component::{scripts_col::scripts_col, top_menu::top_menu};
+use crate::component::folder_col::FolderColumn;
+use crate::component::{scripts_col::ScriptsColumn, top_menu::top_menu};
 use crate::db::get_db::get_db;
 use crate::domain::folder;
 
-#[derive(serde::Deserialize, serde::Serialize)]
-pub struct App {}
+pub struct App {
+    folder_col: FolderColumn,
+    scripts_col: ScriptsColumn,
+}
 
 impl Default for App {
     fn default() -> Self {
-        Self {}
+        Self {
+            folder_col: FolderColumn::new(),
+            scripts_col: ScriptsColumn::new(),
+        }
     }
 }
 
@@ -50,8 +55,9 @@ impl eframe::App for App {
                 },
             }
         }
+
         top_menu(ctx);
-        folder_col(ctx);
-        scripts_col(ctx);
+        self.folder_col.view(ctx);
+        self.scripts_col.view(ctx);
     }
 }
