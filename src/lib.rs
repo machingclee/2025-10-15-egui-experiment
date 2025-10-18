@@ -15,24 +15,23 @@ pub fn send_event(message: AppMessage) {
     let _ = EVENT_SENDER.get().unwrap().send(message);
 }
 
-pub fn send_folder_event(event: FolderEvent) {
+pub fn dispatch_folder_event(event: FolderEvent) {
     send_event(AppMessage::Event(AppEvent::Folder(event)));
+}
+
+pub fn dispatch_folder_command(command: FolderCommand) {
+    send_event(AppMessage::Command(AppCommand::Folder(command)));
 }
 
 pub fn with_folder_state<F, R>(f: F) -> R
 where
     F: FnOnce(&crate::state::folder_state::FoldersState) -> R,
 {
-    let state = FOLDER_STATE.lock();
-    f(&state)
+    f(&crate::state::folder_state::FOLDER_STATE)
 }
 
-pub fn with_folder_state_mut<F, R>(f: F) -> R
-where
-    F: FnOnce(&mut crate::state::folder_state::FoldersState) -> R,
-{
-    let mut state = FOLDER_STATE.lock();
-    f(&mut state)
+pub fn get_folder_state_ref() -> &'static crate::state::folder_state::FoldersState {
+    &crate::state::folder_state::FOLDER_STATE
 }
 
 pub mod app;
@@ -43,10 +42,6 @@ pub mod ext;
 pub mod prisma;
 pub mod state;
 pub static PRISMA_CLIENT: OnceLock<prisma::PrismaClient> = OnceLock::new();
-
-// Re-export commonly used items
-pub use state::folder_state::FOLDER_STATE;
-
 pub use app::App;
 
 // Event system

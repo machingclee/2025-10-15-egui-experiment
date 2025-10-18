@@ -1,8 +1,34 @@
+// Pure view function - only handles rendering
+fn render_scripts_header(
+    ui: &mut egui::Ui,
+    selected_folder: Option<&crate::prisma::scripts_folder::Data>,
+) {
+    let display_name = selected_folder
+        .map(|f| f.name.as_str())
+        .unwrap_or("No folder selected");
+    ui.label(format!("Scripts ({})", display_name));
+    ui.separator();
+}
+
+// Approach 2: Callback pattern - pass view logic to data access
+fn with_selected_folder<F, R>(state: &'static crate::state::folder_state::FoldersState, f: F) -> R
+where
+    F: FnOnce(Option<&crate::prisma::scripts_folder::Data>) -> R,
+{
+    let folder_id = *state.selected_folder_id.read().unwrap();
+    let folders = state.folder_list.read().unwrap();
+    let selected_folder = folders.iter().find(|f| Some(f.id) == folder_id);
+    f(selected_folder)
+}
+
 pub fn scripts_col(ctx: &egui::Context) {
     egui::CentralPanel::default().show(ctx, |ui| {
-        ui.add_space(-6.0); // Reduce top padding
-        ui.label("Scripts");
-        ui.separator();
+        ui.add_space(-6.0);
+
+        let state = crate::get_folder_state_ref();
+        with_selected_folder(state, |selected_folder| {
+            render_scripts_header(ui, selected_folder);
+        });
 
         // Example 1: Using Frame with uniform margin
         egui::Frame::new()
@@ -11,24 +37,6 @@ pub fn scripts_col(ctx: &egui::Context) {
                 ui.label("This is inside a Frame with 16px margin on all sides");
             });
 
-        ui.add_space(10.0);
-
-        // Example 2: Using group() - has default styling with background
-        ui.group(|ui| {
-            ui.label("This is inside a group() - has background and padding");
-        });
-
-        ui.add_space(10.0);
-
-        // Example 3: Frame with background and stroke (most like a styled div)
-        egui::Frame::new()
-            .fill(ui.visuals().window_fill())
-            .stroke(ui.visuals().window_stroke())
-            .corner_radius(4.0)
-            .inner_margin(12.0)
-            .show(ui, |ui| {
-                ui.label("Frame with background, border, rounded corners, and 12px margin");
-            });
         ui.add_space(10.0);
 
         egui::ScrollArea::vertical().show(ui, |ui| {

@@ -3,6 +3,7 @@ use crate::domain::folder::folder_event_handler::FolderEvent;
 #[derive(Debug)]
 pub enum FolderCommand {
     CreateFolderCommand {},
+    SelectFolder { id: i32 },
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -27,13 +28,18 @@ impl FolderCommandHandler {
                         .await
                     {
                         Ok(_) => {
-                            crate::send_folder_event(FolderEvent::FolderAdded {
+                            crate::dispatch_folder_event(FolderEvent::FolderAdded {
                                 name: folder_name,
                             });
                         }
                         Err(e) => eprintln!("Failed to add folder: {:?}", e),
                     }
                 });
+            }
+            FolderCommand::SelectFolder { id } => {
+                let state = crate::get_folder_state_ref();
+                *state.selected_folder_id.write().unwrap() = Some(id);
+                crate::dispatch_folder_event(FolderEvent::FolderSelected { id });
             }
         }
     }

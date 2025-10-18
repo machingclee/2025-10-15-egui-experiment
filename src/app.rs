@@ -23,9 +23,8 @@ impl App {
             let folders = db.scripts_folder().find_many(vec![]).exec().await;
             match folders {
                 Ok(folders) => {
-                    crate::with_folder_state_mut(|state| {
-                        state.folder_list = folders;
-                    });
+                    let state = crate::get_folder_state_ref();
+                    *state.folder_list.write().unwrap() = std::sync::Arc::new(folders);
                 }
                 Err(e) => eprintln!("Failed to load folders: {:?}", e),
             }
