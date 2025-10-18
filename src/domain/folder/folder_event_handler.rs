@@ -64,12 +64,12 @@ impl FolderEventHandler {
                     {
                         Ok(_) => {
                             println!("Successfully updated last opened folder id to {}", id);
-                        };
+                        }
                         Err(e) => eprintln!("Failed to update last opened folder id: {:?}", e),
                     }
 
                     // Load scripts for the selected folder using left join approach
-                    println!("Loading related scripts ...");
+                    println!("Loading related scripts");
                     match db.application_state().find_first(vec![]).exec().await {
                         Ok(Some(app_state)) => {
                             if let Some(folder_id) = app_state.last_opened_folder_id {
