@@ -5,11 +5,14 @@ use crate::component::{scripts_col::ScriptsColumn, top_menu::top_menu};
 use crate::db::get_db::get_db;
 use crate::dispatch_folder_command;
 use crate::domain::folder;
-use crate::domain::folder::folder_command_handler::FolderCommand;
+use crate::domain::folder::folder_command_handler::{FolderCommand, FolderCommandHandler};
+use crate::domain::folder::folder_event_handler::{FolderEvent, FolderEventHandler};
 
 pub struct App {
     folder_col: FolderColumn,
     scripts_col: ScriptsColumn,
+    folder_command_handler: FolderCommandHandler,
+    folder_event_handler: FolderEventHandler,
 }
 
 impl Default for App {
@@ -17,6 +20,8 @@ impl Default for App {
         Self {
             folder_col: FolderColumn::new(),
             scripts_col: ScriptsColumn::new(),
+            folder_command_handler: FolderCommandHandler::new(),
+            folder_event_handler: FolderEventHandler::new(),
         }
     }
 }
@@ -31,10 +36,11 @@ impl App {
             let db = get_db();
             match db.application_state().find_first(vec![]).exec().await {
                 Ok(app_state) => {
-                    let state = crate::get_folder_state_ref();
-                    *state.app_state.write().unwrap() = Arc::new(app_state.clone());
-                    if let Some(state) = app_state {
-                        if let Some(folder_id) = state.last_opened_folder_id {
+                    crate::with_folder_state(|state| {
+                        *state.app_state.write().unwrap() = Arc::new(app_state.clone());
+                    });
+                    if let Some(app_state_inner) = app_state {
+                        if let Some(folder_id) = app_state_inner.last_opened_folder_id {
                             dispatch_folder_command(FolderCommand::SelectFolder { id: folder_id });
                         };
                     }
@@ -45,8 +51,9 @@ impl App {
             let folders = db.scripts_folder().find_many(vec![]).exec().await;
             match folders {
                 Ok(folders) => {
-                    let state = crate::get_folder_state_ref();
-                    *state.folder_list.write().unwrap() = Arc::new(folders);
+                    crate::with_folder_state(|state| {
+                        *state.folder_list.write().unwrap() = Arc::new(folders);
+                    });
                 }
                 Err(e) => eprintln!("Failed to load folders: {:?}", e),
             }
@@ -69,12 +76,12 @@ impl eframe::App for App {
             match message {
                 crate::AppMessage::Command(cmd) => match cmd {
                     crate::AppCommand::Folder(folder_cmd) => {
-                        folder::folder_command_handler::FolderCommandHandler::handle(folder_cmd);
+                        self.folder_command_handler.handle(folder_cmd);
                     }
                 },
                 crate::AppMessage::Event(evt) => match evt {
                     crate::AppEvent::Folder(event) => {
-                        folder::folder_event_handler::FolderEventHandler::handle(event);
+                        self.folder_event_handler.handle(event);
                     }
                 },
             }

@@ -1,7 +1,7 @@
-use std::sync::Arc;
-
 use crate::dispatch_folder_command;
 use crate::domain::folder::folder_command_handler::FolderCommand;
+use egui::Ui;
+use std::sync::Arc;
 
 pub struct FolderColumn;
 
@@ -17,45 +17,56 @@ impl FolderColumn {
             .width_range(200.0..=600.0)
             .show(ctx, |ui| {
                 ui.label("Scripts Folders");
+
                 ui.separator();
 
-                ui.vertical_centered(|ui| {
-                    let response = ui.button("add folder");
-                    if response.clicked() {
-                        dispatch_folder_command(FolderCommand::CreateFolder {});
-                    }
-                });
+                Self::add_folder_button(ui);
 
                 ui.add_space(10.0);
 
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    // Get direct access to state - we handle locking ourselves!
-                    let state = crate::get_folder_state_ref();
+                Self::folder(ui);
+            });
+    }
+
+    fn folder(ui: &mut Ui) {
+        egui::ScrollArea::vertical().show(ui, |ui| {
+            // Get direct access to state - we handle locking ourselves!
+            let (folders_vec, selected_id, rename_folder, rename_text) =
+                crate::with_folder_state(|state| {
                     let folders_vec = (*state.folder_list.read().unwrap()).clone();
                     let selected_id = *state.selected_folder_id.read().unwrap();
                     let rename_folder = state.folder_to_rename.read().unwrap().as_ref().cloned();
                     let rename_text = state.rename_text.read().unwrap().as_ref().cloned();
-
-                    if folders_vec.is_empty() {
-                        ui.label("No folders yet...");
-                    } else {
-                        for folder in &*folders_vec {
-                            let is_renaming = rename_folder
-                                .as_ref()
-                                .map(|f| f.id == folder.id)
-                                .unwrap_or(false);
-                            let display_name = if is_renaming {
-                                rename_text.as_ref().unwrap_or(&folder.name)
-                            } else {
-                                &folder.name
-                            };
-                            let mut folder_item =
-                                FolderItem::new(folder, selected_id, display_name);
-                            folder_item.view(ui);
-                        }
-                    }
+                    (folders_vec, selected_id, rename_folder, rename_text)
                 });
-            });
+
+            if folders_vec.is_empty() {
+                ui.label("No folders yet...");
+            } else {
+                for folder in &*folders_vec {
+                    let is_renaming = rename_folder
+                        .as_ref()
+                        .map(|f| f.id == folder.id)
+                        .unwrap_or(false);
+                    let display_name = if is_renaming {
+                        rename_text.as_ref().unwrap_or(&folder.name)
+                    } else {
+                        &folder.name
+                    };
+                    let mut folder_item = FolderItem::new(folder, selected_id, display_name);
+                    folder_item.view(ui);
+                }
+            }
+        });
+    }
+
+    fn add_folder_button(ui: &mut Ui) {
+        ui.vertical_centered(|ui| {
+            let response = ui.button("add folder");
+            if response.clicked() {
+                dispatch_folder_command(FolderCommand::CreateFolder {});
+            }
+        });
     }
 }
 
@@ -103,10 +114,11 @@ impl<'a> FolderItem<'a> {
         });
     }
     fn dots_menu(&mut self, ui: &mut egui::Ui, folder: &crate::prisma::scripts_folder::Data) {
-        let state = crate::get_folder_state_ref();
-
-        let delete_folder = state.folder_to_delete.read().unwrap().as_ref().cloned();
-        let rename_folder = state.folder_to_rename.read().unwrap().as_ref().cloned();
+        let (delete_folder, rename_folder) = crate::with_folder_state(|state| {
+            let delete_folder = state.folder_to_delete.read().unwrap().as_ref().cloned();
+            let rename_folder = state.folder_to_rename.read().unwrap().as_ref().cloned();
+            (delete_folder, rename_folder)
+        });
 
         ui.menu_button("...", |ui| {
             if ui
@@ -116,12 +128,10 @@ impl<'a> FolderItem<'a> {
                 .clicked()
             {
                 let folder_ = Arc::new(folder.clone());
-                *state
-                    .folder_to_rename
-                    .write()
-                    .unwrap_or_else(|e| e.into_inner()) = Some(folder_.clone());
-                *state.rename_text.write().unwrap_or_else(|e| e.into_inner()) =
-                    Some(folder_.name.clone());
+                crate::with_folder_state(|state| {
+                    *state.folder_to_rename.write().unwrap() = Some(folder_.clone());
+                    *state.rename_text.write().unwrap() = Some(folder_.name.clone());
+                });
             }
             if ui
                 .add_sized([120.0, 20.0], |ui: &mut egui::Ui| {
@@ -130,10 +140,9 @@ impl<'a> FolderItem<'a> {
                 .clicked()
             {
                 let folder_ = Arc::new(folder.clone());
-                *state
-                    .folder_to_delete
-                    .write()
-                    .unwrap_or_else(|e| e.into_inner()) = Some(folder_);
+                crate::with_folder_state(|state| {
+                    *state.folder_to_delete.write().unwrap() = Some(folder_);
+                });
             }
         });
 
@@ -153,11 +162,17 @@ impl<'a> FolderItem<'a> {
                     ui.add_space(20.0);
                     ui.horizontal(|ui| {
                         if ui.button("Cancel").clicked() {
-                            *state.folder_to_delete.write().unwrap() = None;
+                            crate::with_folder_state(|state| {
+                                *state.folder_to_delete.write().unwrap() = None;
+                            });
                         }
                         if ui.button("Delete").clicked() {
-                            dispatch_folder_command(FolderCommand::DeleteFolder { id: folder.id });
-                            *state.folder_to_delete.write().unwrap() = None;
+                            dispatch_folder_command(FolderCommand::DeleteFolder {
+                                folder_id: folder.id,
+                            });
+                            crate::with_folder_state(|state| {
+                                *state.folder_to_delete.write().unwrap() = None;
+                            });
                         }
                     });
                 });
@@ -173,29 +188,36 @@ impl<'a> FolderItem<'a> {
                 .show(ui.ctx(), |ui| {
                     ui.label("Input new folder name:");
                     ui.add_space(10.0);
-                    let mut text = state
-                        .rename_text
-                        .read()
-                        .unwrap()
-                        .as_ref()
-                        .cloned()
-                        .unwrap_or_default();
+                    let mut text = crate::with_folder_state(|state| {
+                        state
+                            .rename_text
+                            .read()
+                            .unwrap()
+                            .as_ref()
+                            .cloned()
+                            .unwrap_or_default()
+                    });
                     ui.text_edit_singleline(&mut text);
-                    *state.rename_text.write().unwrap_or_else(|e| e.into_inner()) =
-                        Some(text.clone());
+                    crate::with_folder_state(|state| {
+                        *state.rename_text.write().unwrap() = Some(text.clone());
+                    });
                     ui.add_space(20.0);
                     ui.horizontal(|ui| {
                         if ui.button("Cancel").clicked() {
-                            *state.folder_to_rename.write().unwrap() = None;
-                            *state.rename_text.write().unwrap() = None;
+                            crate::with_folder_state(|state| {
+                                *state.folder_to_rename.write().unwrap() = None;
+                                *state.rename_text.write().unwrap() = None;
+                            });
                         }
                         if ui.button("Rename").clicked() {
                             dispatch_folder_command(FolderCommand::RenameFolder {
                                 folder_id: folder_.id,
                                 new_name: text,
                             });
-                            *state.folder_to_rename.write().unwrap() = None;
-                            *state.rename_text.write().unwrap() = None;
+                            crate::with_folder_state(|state| {
+                                *state.folder_to_rename.write().unwrap() = None;
+                                *state.rename_text.write().unwrap() = None;
+                            });
                         }
                     });
                 });

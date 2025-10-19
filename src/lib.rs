@@ -56,6 +56,17 @@ where
     f(&crate::state::folder_state::FOLDER_STATE)
 }
 
+pub fn with_folder_state_reducer<F, R>(f: F) -> R
+where
+    F: FnOnce(&crate::state::folder_state::FolderReducer<'static>) -> R,
+{
+    // FOLDER_STATE is a 'static LazyLock, so we can create a FolderReducer<'static> safely
+    let reducer = crate::state::folder_state::FolderReducer {
+        state: &crate::state::folder_state::FOLDER_STATE,
+    };
+    f(&reducer)
+}
+
 pub fn get_folder_state_ref() -> &'static crate::state::folder_state::FoldersState {
     &crate::state::folder_state::FOLDER_STATE
 }

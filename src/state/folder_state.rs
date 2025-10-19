@@ -15,3 +15,42 @@ pub struct FoldersState {
 }
 
 pub static FOLDER_STATE: LazyLock<FoldersState> = LazyLock::new(|| FoldersState::default());
+
+pub struct FolderReducer<'a> {
+    pub state: &'a FoldersState,
+}
+
+impl<'a> FolderReducer<'a> {
+    pub fn select_folder(&self, id: i32) {
+        *self.state.selected_folder_id.write().unwrap() = Some(id);
+    }
+
+    pub fn delete_folder(&self, id: i32) {
+        let mut folders = self.state.folder_list.write().unwrap();
+        let updated_folders: Vec<_> = folders.iter().filter(|f| f.id != id).cloned().collect();
+        *folders = Arc::new(updated_folders);
+    }
+
+    pub fn rename_folder(&self, id: i32, new_name: &str) {
+        let mut folders = self.state.folder_list.write().unwrap();
+        let folders_vec = Arc::make_mut(&mut *folders);
+        for folder in folders_vec.iter_mut() {
+            if folder.id == id {
+                folder.name = new_name.to_string();
+                break;
+            }
+        }
+    }
+
+    pub fn set_folder_list(&self, folders: Vec<prisma::scripts_folder::Data>) {
+        *self.state.folder_list.write().unwrap() = Arc::new(folders);
+    }
+
+    pub fn set_scripts_of_selected_folder(&self, scripts: Vec<prisma::shell_script::Data>) {
+        *self.state.scripts_of_selected_folder.write().unwrap() = Arc::new(scripts);
+    }
+
+    pub fn set_app_state(&self, app_state: Option<prisma::application_state::Data>) {
+        *self.state.app_state.write().unwrap() = Arc::new(app_state);
+    }
+}
