@@ -8,7 +8,7 @@ use std::sync::Arc;
 pub enum FolderCommand {
     CreateFolder {},
     SelectFolder {
-        id: i32,
+        folder_id: i32,
     },
     DeleteFolder {
         folder_id: i32,
@@ -18,11 +18,11 @@ pub enum FolderCommand {
         name: String,
         command: String,
     },
-    UpdateScriptToFolder {
+    UpdateScript {
         script_id: i32,
         new_command: String,
     },
-    UpdateScriptNameToFolder {
+    UpdateScriptName {
         script_id: i32,
         new_name: String,
     },
@@ -65,14 +65,25 @@ impl FolderCommandHandler {
                     }
                 });
             }
-            FolderCommand::SelectFolder { id } => {
-                crate::with_folder_state_reducer(|r| r.select_folder(id));
-                crate::dispatch_folder_event(FolderEvent::FolderSelected { id });
-            }
+            FolderCommand::SelectFolder { folder_id } => crate::spawn_task(async move {
+                match folder_repository
+                    .upsert_app_state_last_folder_id(folder_id)
+                    .await
+                {
+                    Ok(_) => {
+                        crate::dispatch_folder_event(FolderEvent::FolderSelected { folder_id });
+                        println!(
+                            "Successfully updated last opened folder id to {}",
+                            folder_id
+                        );
+                    }
+                    Err(e) => eprintln!("Failed to update last opened folder id: {:?}", e),
+                }
+            }),
             FolderCommand::DeleteFolder { folder_id } => {
                 crate::spawn_task(async move {
                     // Manual cascading delete (not atomic - use transaction for production)
-                    let result: Result<(), ::prisma_client_rust::QueryError> =
+                    let result: Result<(), prisma_client_rust::QueryError> =
                         folder_repository.delete_script_folder(folder_id).await;
 
                     match result {
@@ -81,11 +92,8 @@ impl FolderCommandHandler {
                                 "Folder with id {} and related data deleted successfully",
                                 folder_id
                             );
-                            crate::with_folder_state_reducer(|r| r.delete_folder(folder_id));
                             // Dispatch event to refresh UI
-                            crate::dispatch_folder_event(FolderEvent::FolderDeleted {
-                                id: folder_id,
-                            });
+                            crate::dispatch_folder_event(FolderEvent::FolderDeleted { folder_id });
                         }
                         Err(e) => eprintln!("Failed to delete folder: {:?}", e),
                     }
@@ -142,11 +150,8 @@ impl FolderCommandHandler {
                                 "Folder id {} renamed to '{}' successfully",
                                 folder_id, new_name
                             );
-                            crate::with_folder_state_reducer(|r| {
-                                r.rename_folder(folder_id, &new_name)
-                            });
                             crate::dispatch_folder_event(FolderEvent::FolderRenamed {
-                                id: folder_id,
+                                folder_id,
                                 new_name,
                             });
                         }
@@ -154,7 +159,7 @@ impl FolderCommandHandler {
                     }
                 });
             }
-            FolderCommand::UpdateScriptToFolder {
+            FolderCommand::UpdateScript {
                 script_id,
                 new_command,
             } => {
@@ -173,7 +178,7 @@ impl FolderCommandHandler {
                     }
                 });
             }
-            FolderCommand::UpdateScriptNameToFolder {
+            FolderCommand::UpdateScriptName {
                 script_id,
                 new_name,
             } => {

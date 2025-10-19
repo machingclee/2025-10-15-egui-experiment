@@ -4,7 +4,6 @@ use crate::component::folder_col::FolderColumn;
 use crate::component::{scripts_col::ScriptsColumn, top_menu::top_menu};
 use crate::db::get_db::get_db;
 use crate::dispatch_folder_command;
-use crate::domain::folder;
 use crate::domain::folder::folder_command_handler::{FolderCommand, FolderCommandHandler};
 use crate::domain::folder::folder_event_handler::{FolderEvent, FolderEventHandler};
 
@@ -41,7 +40,9 @@ impl App {
                     });
                     if let Some(app_state_inner) = app_state {
                         if let Some(folder_id) = app_state_inner.last_opened_folder_id {
-                            dispatch_folder_command(FolderCommand::SelectFolder { id: folder_id });
+                            dispatch_folder_command(FolderCommand::SelectFolder {
+                                folder_id: folder_id,
+                            });
                         };
                     }
                 }

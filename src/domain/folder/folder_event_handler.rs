@@ -3,15 +3,16 @@ use std::sync::Arc;
 use crate::db::get_db::get_db;
 use crate::db::repository::folder_repository::FolderRepository;
 use crate::db::repository::script_repository::ScriptRepository;
+use crate::with_folder_state_reducer;
 
 #[derive(Debug)]
 pub enum FolderEvent {
     FolderAdded { name: String },
-    FolderSelected { id: i32 },
-    FolderDeleted { id: i32 },
+    FolderSelected { folder_id: i32 },
+    FolderDeleted { folder_id: i32 },
     ScriptAdded { folder_id: i32 },
     ScriptUpdated { script_id: i32 },
-    FolderRenamed { id: i32, new_name: String },
+    FolderRenamed { folder_id: i32, new_name: String },
 }
 
 pub struct FolderEventHandler {
@@ -46,17 +47,11 @@ impl FolderEventHandler {
                     }
                 });
             }
-            FolderEvent::FolderSelected { id } => {
+            FolderEvent::FolderSelected { folder_id: id } => {
                 println!("Folder selected event received for folder id: {}", id);
                 crate::spawn_task(async move {
                     // upsert app_state to set last_folder_id to be this id
-                    match folder_repository.upsert_app_state_last_folder_id(id).await {
-                        Ok(_) => {
-                            println!("Successfully updated last opened folder id to {}", id);
-                        }
-                        Err(e) => eprintln!("Failed to update last opened folder id: {:?}", e),
-                    }
-
+                    crate::with_folder_state_reducer(|r| r.select_folder(id));
                     println!("Loading related scripts");
                     match folder_repository.get_app_state().await {
                         Ok(Some(app_state)) => {
@@ -93,8 +88,9 @@ impl FolderEventHandler {
                     }
                 });
             }
-            FolderEvent::FolderDeleted { id } => {
-                println!("Folder deleted event received for folder id: {}", id);
+            FolderEvent::FolderDeleted { folder_id } => {
+                with_folder_state_reducer(|reducer| reducer.delete_folder(folder_id));
+                println!("Folder deleted event received for folder id: {}", folder_id);
             }
             FolderEvent::ScriptAdded { folder_id } => {
                 crate::spawn_task(async move {
@@ -111,25 +107,29 @@ impl FolderEventHandler {
             }
             FolderEvent::ScriptUpdated { script_id } => {
                 println!("Script updated event received for script id: {}", script_id);
-                if let Some(folder_id) =
-                    crate::with_folder_state(|state| *state.selected_folder_id.read().unwrap())
-                {
-                    crate::spawn_task(async move {
-                        match script_repository.get_scripts_by_folder(folder_id).await {
-                            Ok(scripts) => {
-                                crate::with_folder_state_reducer(|r| {
-                                    r.set_scripts_of_selected_folder(scripts)
-                                });
+                crate::with_folder_state(|state| {
+                    if let Some(folder_id) = *state.selected_folder_id.read().unwrap() {
+                        crate::spawn_task(async move {
+                            match script_repository.get_scripts_by_folder(folder_id).await {
+                                Ok(scripts) => {
+                                    crate::with_folder_state_reducer(|r| {
+                                        r.set_scripts_of_selected_folder(scripts)
+                                    });
+                                }
+                                Err(e) => eprintln!("Failed to reload scripts: {:?}", e),
                             }
-                            Err(e) => eprintln!("Failed to reload scripts: {:?}", e),
-                        }
-                    });
-                }
+                        });
+                    }
+                })
             }
-            FolderEvent::FolderRenamed { id, new_name } => {
+            FolderEvent::FolderRenamed {
+                folder_id,
+                new_name,
+            } => {
+                crate::with_folder_state_reducer(|r| r.rename_folder(folder_id, &new_name));
                 println!(
                     "Folder renamed event received for folder id: {}, new name: {}",
-                    id, new_name
+                    folder_id, new_name
                 );
             }
         };

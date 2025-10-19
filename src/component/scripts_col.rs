@@ -1,4 +1,3 @@
-use crate::state::folder_state::FoldersState;
 use crate::{
     dispatch_folder_command, domain::folder::folder_command_handler::FolderCommand,
     get_folder_state_ref, with_folder_state,
@@ -70,7 +69,7 @@ impl ScriptsColumn {
                         self.renaming_script_id = None;
                     }
                     if ui.button("Rename").clicked() {
-                        dispatch_folder_command(FolderCommand::UpdateScriptNameToFolder {
+                        dispatch_folder_command(FolderCommand::UpdateScriptName {
                             script_id,
                             new_name: self.renaming_name.clone(),
                         });
@@ -101,7 +100,7 @@ impl ScriptsColumn {
                         self.editing_script_id = None;
                     }
                     if ui.button("Save").clicked() {
-                        dispatch_folder_command(FolderCommand::UpdateScriptToFolder {
+                        dispatch_folder_command(FolderCommand::UpdateScript {
                             script_id,
                             new_command: self.editing_command.clone(),
                         });
@@ -114,53 +113,51 @@ impl ScriptsColumn {
     fn scripts_of_selected_folder(&mut self, ui: &mut Ui) {
         crate::with_folder_state(|state| {
             egui::ScrollArea::vertical().show(ui, |ui| {
-                with_scritps_from_selected_folder(
-                    |scripts| {
-                        for script in scripts.iter() {
-                            let frame =
-                                egui::Frame::group(ui.style()).fill(ui.visuals().faint_bg_color);
-                            frame.show(ui, |ui| {
-                                ui.horizontal(|ui| {
-                                    ui.label(format!("Name: {}", script.name));
-                                    if ui.button("Rename").clicked() {
-                                        self.renaming_script_id = Some(script.id);
-                                        self.renaming_name = script.name.clone();
-                                    }
-                                    ui.with_layout(
-                                        egui::Layout::right_to_left(egui::Align::Center),
-                                        |ui| {
-                                            if ui.button("Execute").clicked() {
-                                                // Execute the script command
-                                                crate::run_terminal_command(script.command.clone());
-                                            }
-                                            if ui.button("Edit").clicked() {
-                                                self.editing_script_id = Some(script.id);
-                                                self.editing_command = script.command.clone();
-                                            }
-                                            if ui.button("Copy").clicked() {
-                                                ui.ctx().copy_text(script.command.clone());
-                                            }
-                                        },
+                with_scritps_from_selected_folder(|scripts| {
+                    for script in scripts.iter() {
+                        let frame =
+                            egui::Frame::group(ui.style()).fill(ui.visuals().faint_bg_color);
+                        frame.show(ui, |ui| {
+                            ui.horizontal(|ui| {
+                                ui.label(format!("Name: {}", script.name));
+                                if ui.button("Rename").clicked() {
+                                    self.renaming_script_id = Some(script.id);
+                                    self.renaming_name = script.name.clone();
+                                }
+                                ui.with_layout(
+                                    egui::Layout::right_to_left(egui::Align::Center),
+                                    |ui| {
+                                        if ui.button("Execute").clicked() {
+                                            // Execute the script command
+                                            crate::run_terminal_command(script.command.clone());
+                                        }
+                                        if ui.button("Edit").clicked() {
+                                            self.editing_script_id = Some(script.id);
+                                            self.editing_command = script.command.clone();
+                                        }
+                                        if ui.button("Copy").clicked() {
+                                            ui.ctx().copy_text(script.command.clone());
+                                        }
+                                    },
+                                );
+                            });
+                            ui.label("Command:");
+                            egui::Frame::NONE
+                                .fill(ui.visuals().code_bg_color)
+                                .show(ui, |ui| {
+                                    ui.add(
+                                        egui::TextEdit::multiline(&mut script.command.clone())
+                                            .font(egui::TextStyle::Monospace)
+                                            .interactive(false)
+                                            .frame(false)
+                                            .desired_rows(5)
+                                            .desired_width(f32::INFINITY),
                                     );
                                 });
-                                ui.label("Command:");
-                                egui::Frame::NONE
-                                    .fill(ui.visuals().code_bg_color)
-                                    .show(ui, |ui| {
-                                        ui.add(
-                                            egui::TextEdit::multiline(&mut script.command.clone())
-                                                .font(egui::TextStyle::Monospace)
-                                                .interactive(false)
-                                                .frame(false)
-                                                .desired_rows(5)
-                                                .desired_width(f32::INFINITY),
-                                        );
-                                    });
-                            });
-                            ui.add_space(10.0);
-                        }
-                    },
-                );
+                        });
+                        ui.add_space(10.0);
+                    }
+                });
             });
         })
     }

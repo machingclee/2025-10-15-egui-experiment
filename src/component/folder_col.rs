@@ -104,7 +104,9 @@ impl<'a> FolderItem<'a> {
                 |ui: &mut egui::Ui| {
                     let response = ui.selectable_label(is_selected, self.display_name);
                     if response.clicked() {
-                        dispatch_folder_command(FolderCommand::SelectFolder { id: self.folder.id });
+                        dispatch_folder_command(FolderCommand::SelectFolder {
+                            folder_id: self.folder.id,
+                        });
                     }
                     response
                 },
