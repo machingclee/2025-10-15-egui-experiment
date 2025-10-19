@@ -15,9 +15,10 @@ cargo build --release
 A desktop application for managing shell scripts organized in folders, built with Rust and egui.
 
 More discussion on the project architecture will be explained in my future blog post. I have intended to manage the
-application state by means of Domain Driven Design methodology.
+application (backend) state by means of Commands and Events for better separation of concerns.
 
-As desktop application is a ***mix*** of frontend and backend application, I have also use "redux-like" architecture to manage the UI state. Fortunately rust has built-in mechanism for channel and messaging between threads.
+As desktop application is a ***mix*** of frontend and backend application, I have also used "redux-like" architecture to
+manage the UI state. Fortunately rust has built-in mechanism for channel and messaging between threads.
 
 ## Features
 
