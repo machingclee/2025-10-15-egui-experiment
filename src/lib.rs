@@ -75,7 +75,6 @@ pub mod app;
 pub mod component;
 pub mod db;
 pub mod domain;
-pub mod event_bus;
 pub mod ext;
 pub mod prisma;
 pub mod state;
