@@ -2,38 +2,22 @@
 
 https://github.com/user-attachments/assets/0871fb9b-8043-46d9-8032-f8f79364e810
 
-
-
-# Egui study from eframe template
-
-Study of emui and base on the template to build my own application.
-
-## Database Setup
-
-This application uses SQLite with Prisma for data persistence.
-
-### Development
-```bash
-# Apply migrations to development database
-npm run migrate:dev
-
-# Or push schema directly (for simple schemas)
-npm run db:push
-```
-
 ### Production Deployment
-For production, you have several options:
 
-#### Option 1: Manual Migration (Recommended)
-Run migrations as part of your deployment process:
+Directly run
+
 ```bash
-# Apply all pending migrations
-npm run migrate:deploy
+cargo build --release
 ```
 
 # Shell Script Manager
 
 A desktop application for managing shell scripts organized in folders, built with Rust and egui.
+
+More discussion on the project architecture will be explained in my future blog post. I have intended to manage the
+application state by means of Domain Driven Design methodology.
+
+As desktop application is a ***mix*** of frontend and backend application, I have also use "redux-like" architecture to manage the UI state. Fortunately rust has built-in mechanism for channel and messaging between threads.
 
 ## Features
 
@@ -44,9 +28,18 @@ A desktop application for managing shell scripts organized in folders, built wit
 
 ## Database Setup
 
-This desktop application automatically creates and initializes the SQLite database on first run. No manual setup required!
+This desktop application automatically creates and initializes the SQLite database on first run. No manual setup
+required!
 
-The database file (`dev-database.db`) is created in the application directory. The app includes embedded migration scripts that run automatically to set up the required tables:
+The database file (`database.db`) is created in the application directory. The app includes embedded migration
+scripts that run automatically to set up the required tables:
+
+For production deployment, db migration history is embedded in the binary and will be applied on first run. The `SQLite`
+db
+file will be saved at
+`/%APP_DATE%/database.db` on windows and `~/Library/Application Support/<app-name>/database.db` on mac.
+
+The tables include:
 
 - `scripts_folder` - Folder organization
 - `shell_script` - Script storage
@@ -68,11 +61,8 @@ cargo run
 The app will automatically create the database and tables on first launch.
 
 #### Option 3: Pre-built Database
+
 - Create the database locally with migrations
 - Include the `dev-database.db` file in your deployment package
 - The app will use the existing database without running migrations
 
-## Building
-```bash
-cargo build --release
-```
