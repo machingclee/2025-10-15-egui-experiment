@@ -1,3 +1,9 @@
+# Video Demo
+
+https://github.com/user-attachments/assets/0871fb9b-8043-46d9-8032-f8f79364e810
+
+
+
 # Egui study from eframe template
 
 Study of emui and base on the template to build my own application.
