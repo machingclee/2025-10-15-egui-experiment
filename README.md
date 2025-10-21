@@ -14,7 +14,7 @@ cargo build --release
 
 A desktop application for managing shell scripts organized in folders, built with Rust and egui.
 
-More discussion on the project architecture will be explained in my future blog post. I have intended to manage the
+More discussion on the project architecture can be found in [this blog post](https://machingclee.github.io/blog/article/Study-Notes-of-egui-Part-I-Architecture-of-egui-Application). I have intended to manage the
 application (backend) state by means of Commands and Events for better separation of concerns.
 
 As desktop application is a ***mix*** of frontend and backend application, I have also used "redux-like" architecture to
