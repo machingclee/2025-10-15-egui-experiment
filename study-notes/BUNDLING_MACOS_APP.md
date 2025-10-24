@@ -31,13 +31,8 @@ This will create `Shell Script Manager.app` in your project directory.
 
 ## Developer Testing
 
-After bundling, macOS Gatekeeper may block the app with a "malware" warning. **For testing/development**, use the
-provided script:
-
-```bash
-./remove_quarantine.sh
-```
-
+After bundling, macOS Gatekeeper may block the app with a "malware" warning. **For testing/development**, use this
+command to bypass the warning:
 Or manually run:
 
 ```bash
