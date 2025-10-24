@@ -7,6 +7,7 @@ impl App {
         // Try to load system fonts
         #[cfg(target_os = "macos")]
         {
+            // Load regular font
             if let Some(font_data) = Self::load_system_font("Helvetica Neue") {
                 fonts.font_data.insert(
                     "system_font".to_owned(),
@@ -17,6 +18,20 @@ impl App {
                     .get_mut(&egui::FontFamily::Proportional)
                     .unwrap()
                     .insert(0, "system_font".to_owned());
+            }
+
+            // Load bold font variant
+            if let Some(font_data) = Self::load_system_font_bold("Helvetica Neue") {
+                fonts.font_data.insert(
+                    "system_font_bold".to_owned(),
+                    std::sync::Arc::new(egui::FontData::from_owned(font_data)),
+                );
+                // Insert bold variant for heading/strong text
+                fonts
+                    .families
+                    .entry(egui::FontFamily::Name("Heading".into()))
+                    .or_default()
+                    .insert(0, "system_font_bold".to_owned());
             }
 
             if let Some(font_data) = Self::load_system_font("Menlo") {
@@ -94,6 +109,20 @@ impl App {
 
         let property = system_fonts::FontPropertyBuilder::new()
             .family(name)
+            .build();
+
+        match system_fonts::get(&property) {
+            Some((font_data, _)) => Some(font_data),
+            None => None,
+        }
+    }
+
+    fn load_system_font_bold(name: &str) -> Option<Vec<u8>> {
+        use font_loader::system_fonts;
+
+        let property = system_fonts::FontPropertyBuilder::new()
+            .family(name)
+            .bold()
             .build();
 
         match system_fonts::get(&property) {

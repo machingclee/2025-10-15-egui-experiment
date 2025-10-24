@@ -13,6 +13,7 @@ pub enum FolderEvent {
     ScriptAdded { folder_id: i32 },
     ScriptUpdated { script_id: i32 },
     FolderRenamed { folder_id: i32, new_name: String },
+    ScriptDeleted { script_id: i32 },
 }
 
 pub struct FolderEventHandler {
@@ -131,6 +132,11 @@ impl FolderEventHandler {
                     "Folder renamed event received for folder id: {}, new name: {}",
                     folder_id, new_name
                 );
+            }
+            FolderEvent::ScriptDeleted { script_id } => {
+                println!("Script deleted event received for script id: {}", script_id);
+                // just remove the script from UI state
+                crate::with_folder_state_reducer(|r| r.delete_script_from_selected_folder(script_id));
             }
         };
     }

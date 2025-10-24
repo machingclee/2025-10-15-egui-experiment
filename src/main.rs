@@ -50,6 +50,14 @@ fn main() -> eframe::Result<()> {
         }
     });
 
+    // Spawn a task to keep the runtime alive
+    std::thread::spawn(move || {
+        rt.block_on(async {
+            // Keep alive until signal
+            let _ = tokio::signal::ctrl_c().await;
+        });
+    });
+
     // Initialize event system
     let (tx, rx) = crossbeam::channel::unbounded();
     shell_script_manager::EVENT_SENDER.set(tx).unwrap();
@@ -66,14 +74,6 @@ fn main() -> eframe::Result<()> {
             ),
         ..Default::default()
     };
-
-    // Spawn a task to keep the runtime alive
-    std::thread::spawn(move || {
-        rt.block_on(async {
-            // Keep alive until signal
-            let _ = tokio::signal::ctrl_c().await;
-        });
-    });
 
     eframe::run_native(
         "Shell Script Managers",

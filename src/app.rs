@@ -1,11 +1,12 @@
 use std::sync::Arc;
 
-use crate::component::folder_col::FolderColumn;
-use crate::component::{scripts_col::ScriptsColumn, top_menu::top_menu};
+use crate::component::left_folders_col::folder_col::FolderColumn;
+use crate::component::right_scripts_col::scripts_col::ScriptsColumn;
+use crate::component::top_menu::top_menu;
 use crate::db::get_db::get_db;
 use crate::dispatch_folder_command;
 use crate::domain::folder::folder_command_handler::{FolderCommand, FolderCommandHandler};
-use crate::domain::folder::folder_event_handler::{FolderEvent, FolderEventHandler};
+use crate::domain::folder::folder_event_handler::FolderEventHandler;
 
 pub struct App {
     folder_col: FolderColumn,
@@ -27,7 +28,7 @@ impl Default for App {
 
 impl App {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        cc.egui_ctx.set_visuals(egui::Visuals::dark());
+        // cc.egui_ctx.set_visuals(egui::Visuals::dark());
         Self::setup_custom_fonts(&cc.egui_ctx);
 
         // load the initial state from db:
@@ -76,8 +77,8 @@ impl eframe::App for App {
         while let Ok(message) = crate::EVENT_RECEIVER.get().unwrap().try_recv() {
             match message {
                 crate::AppMessage::Command(cmd) => match cmd {
-                    crate::AppCommand::Folder(folder_cmd) => {
-                        self.folder_command_handler.handle(folder_cmd);
+                    crate::AppCommand::Folder(wrapped_cmd) => {
+                        self.folder_command_handler.handle(wrapped_cmd);
                     }
                 },
                 crate::AppMessage::Event(evt) => match evt {
@@ -85,6 +86,9 @@ impl eframe::App for App {
                         self.folder_event_handler.handle(event);
                     }
                 },
+                crate::AppMessage::Callback(cb) => {
+                    cb();
+                }
             }
         }
 

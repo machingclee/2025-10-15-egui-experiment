@@ -46,7 +46,23 @@ pub fn dispatch_folder_event(event: FolderEvent) {
 
 pub fn dispatch_folder_command(command: FolderCommand) {
     println!("Dispatching folder command: {:?}", command);
-    send_event(AppMessage::Command(AppCommand::Folder(command)));
+    let wrapped = WrappedFolderCommand {
+        command,
+        callback: None,
+    };
+    send_event(AppMessage::Command(AppCommand::Folder(wrapped)));
+}
+
+pub fn dispatch_folder_command_with_callback<F>(command: FolderCommand, callback: Option<F>)
+where
+    F: Fn() + Send + 'static,
+{
+    let cb_box = callback.map(|f| Box::new(f) as Box<dyn Fn() + Send + 'static>);
+    let wrapped = WrappedFolderCommand {
+        command,
+        callback: cb_box,
+    };
+    send_event(AppMessage::Command(AppCommand::Folder(wrapped)));
 }
 
 pub fn with_folder_state<F, R>(f: F) -> R
@@ -66,11 +82,6 @@ where
     };
     f(&reducer)
 }
-
-pub fn get_folder_state_ref() -> &'static crate::state::folder_state::FoldersState {
-    &crate::state::folder_state::FOLDER_STATE
-}
-
 pub mod app;
 pub mod component;
 pub mod db;
@@ -88,10 +99,26 @@ use crate::domain::folder::{
     folder_command_handler::FolderCommand, folder_event_handler::FolderEvent,
 };
 
+// Wrapper for commands that can optionally carry a callback to be executed after handling.
+// The callback is optional and boxed; we use `Fn()` for object safety and simplicity.
+pub struct WrappedFolderCommand {
+    pub command: FolderCommand,
+    pub callback: Option<Box<dyn Fn() + Send + 'static>>,
+}
+
+impl std::fmt::Debug for WrappedFolderCommand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("WrappedFolderCommand")
+            .field("command", &self.command)
+            .field("has_callback", &self.callback.is_some())
+            .finish()
+    }
+}
+
 // Domain-specific message types
 #[derive(Debug)]
 pub enum AppCommand {
-    Folder(FolderCommand),
+    Folder(WrappedFolderCommand),
 }
 
 #[derive(Debug)]
@@ -99,10 +126,20 @@ pub enum AppEvent {
     Folder(FolderEvent),
 }
 
-#[derive(Debug)]
 pub enum AppMessage {
     Command(AppCommand),
     Event(AppEvent),
+    Callback(Box<dyn Fn() + Send + 'static>),
+}
+
+impl std::fmt::Debug for AppMessage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AppMessage::Command(cmd) => f.debug_tuple("Command").field(cmd).finish(),
+            AppMessage::Event(evt) => f.debug_tuple("Event").field(evt).finish(),
+            AppMessage::Callback(_) => f.debug_tuple("Callback").field(&"<callback>").finish(),
+        }
+    }
 }
 
 pub static EVENT_SENDER: OnceLock<Sender<AppMessage>> = OnceLock::new();

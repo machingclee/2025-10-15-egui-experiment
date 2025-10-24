@@ -32,8 +32,8 @@ impl ScriptRepository {
         self.db
             .rel_scriptsfolder_shellscript()
             .create(
-                crate::prisma::shell_script::UniqueWhereParam::IdEquals(folder_id),
-                crate::prisma::scripts_folder::UniqueWhereParam::IdEquals(script_id),
+                crate::prisma::shell_script::UniqueWhereParam::IdEquals(script_id),
+                crate::prisma::scripts_folder::UniqueWhereParam::IdEquals(folder_id),
                 vec![],
             )
             .exec()
@@ -121,5 +121,14 @@ impl ScriptRepository {
             .collect();
 
         Ok(folder_scripts)
+    }
+
+    pub async fn delete_script(&self, script_id: i32) -> prisma_client_rust::Result<()> {
+        self.db
+            .shell_script()
+            .delete_many(vec![crate::prisma::shell_script::id::equals(script_id)])
+            .exec()
+            .await?;
+        Ok(())
     }
 }

@@ -30,6 +30,16 @@ impl<'a> FolderReducer<'a> {
         let updated_folders: Vec<_> = folders.iter().filter(|f| f.id != id).cloned().collect();
         *folders = Arc::new(updated_folders);
     }
+    
+    pub fn delete_script_from_selected_folder (&self, script_id: i32) {
+        let mut scripts = self.state.scripts_of_selected_folder.write().unwrap();
+        let updated_scripts: Vec<_> = scripts
+            .iter()
+            .filter(|s| s.id != script_id)
+            .cloned()
+            .collect();
+        *scripts = Arc::new(updated_scripts);
+    }
 
     pub fn rename_folder(&self, id: i32, new_name: &str) {
         let mut folders = self.state.folder_list.write().unwrap();
