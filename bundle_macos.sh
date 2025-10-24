@@ -78,12 +78,42 @@ EOF
 echo "Setting executable permissions..."
 chmod +x "$BUNDLE_NAME/Contents/MacOS/$EXECUTABLE_NAME"
 
+echo "Removing quarantine attributes..."
+# Remove quarantine before signing
+xattr -cr "$BUNDLE_NAME" 2>/dev/null || true
+xattr -d com.apple.quarantine "$BUNDLE_NAME" 2>/dev/null || true
+
+echo "Code signing the app bundle..."
+# Ad-hoc signing (no developer certificate needed)
+codesign --force --deep --sign - "$BUNDLE_NAME" 2>/dev/null
+
+if [ $? -eq 0 ]; then
+    echo "✅ Code signing successful"
+
+    # Remove quarantine again after signing
+    xattr -cr "$BUNDLE_NAME" 2>/dev/null || true
+    xattr -d com.apple.quarantine "$BUNDLE_NAME" 2>/dev/null || true
+
+    # Also remove from the executable directly
+    xattr -cr "$BUNDLE_NAME/Contents/MacOS/$EXECUTABLE_NAME" 2>/dev/null || true
+else
+    echo "⚠️  Code signing failed, but app may still work"
+fi
+
 echo ""
 echo "✅ App bundle created successfully: $BUNDLE_NAME"
 echo ""
-echo "You can now:"
-echo "  1. Double-click '$BUNDLE_NAME' to run the app"
-echo "  2. Drag it to /Applications folder"
-echo "  3. Run: open '$BUNDLE_NAME'"
+echo "To run the app:"
+echo "  • Double-click '$BUNDLE_NAME' to launch"
+echo "  • Or run: open '$BUNDLE_NAME'"
+echo ""
+echo "If you get a 'malware' warning from macOS Gatekeeper:"
+echo "  1. Right-click (or Control+click) on '$BUNDLE_NAME'"
+echo "  2. Select 'Open' from the menu"
+echo "  3. Click 'Open' in the dialog that appears"
+echo "  4. The app will open and macOS will remember your choice"
+echo ""
+echo "Alternative: Disable Gatekeeper check for this app:"
+echo "  sudo xattr -rd com.apple.quarantine '$BUNDLE_NAME'"
 echo ""
 

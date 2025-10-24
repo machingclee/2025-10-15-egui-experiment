@@ -29,6 +29,28 @@ Simply run the bundling script:
 
 This will create `Shell Script Manager.app` in your project directory.
 
+## Developer Testing
+
+After bundling, macOS Gatekeeper may block the app with a "malware" warning. **For testing/development**, use the
+provided script:
+
+```bash
+./remove_quarantine.sh
+```
+
+Or manually run:
+
+```bash
+sudo xattr -rd com.apple.quarantine "Shell Script Manager.app"
+```
+
+Then double-click the app to launch it normally.
+
+**Alternative:** Right-click the app → Select "Open" → Click "Open" in the dialog. macOS will remember your choice.
+
+> **Note:** This is only needed for local development. For distribution to other users, you'll need proper code signing
+> with an Apple Developer certificate.
+
 ## How to Use the .app Bundle
 
 ### Option 1: Run from Terminal
@@ -117,6 +139,20 @@ chmod +x Contents/MacOS/shell_script_manager
 
 Makes the binary executable so macOS can run it.
 
+### 7. Code Sign the App Bundle
+
+```bash
+codesign --force --deep --sign - "Shell Script Manager.app"
+xattr -cr "Shell Script Manager.app"
+```
+
+The script automatically performs **ad-hoc code signing**:
+
+- `--sign -` uses ad-hoc signing (no developer certificate required)
+- Prevents macOS "damaged" or "can't be verified" warnings
+- `xattr -cr` removes quarantine attributes that trigger Gatekeeper
+- **For personal use only** - distribution requires a Developer ID certificate
+
 ## Customization
 
 ### Change App Name
@@ -201,13 +237,55 @@ codesign --force --deep --sign "Developer ID Application: Your Name" "Shell Scri
 
 ## Troubleshooting
 
+### "Malware" or "can't be verified" Warning (Gatekeeper)
+
+macOS Gatekeeper blocks unsigned apps from unidentified developers. There are several ways to open your app:
+
+**Method 1: Right-click to Open (Recommended)**
+
+1. Right-click (or Control+click) on `Shell Script Manager.app`
+2. Select **"Open"** from the context menu
+3. In the dialog that appears, click **"Open"** again
+4. macOS will remember your choice and won't ask again
+
+**Method 2: Remove Quarantine Attribute**
+
+```bash
+sudo xattr -rd com.apple.quarantine "Shell Script Manager.app"
+```
+
+This removes the quarantine flag that triggers Gatekeeper warnings.
+
+**Method 3: Disable Gatekeeper Temporarily (Not Recommended)**
+
+```bash
+sudo spctl --master-disable
+```
+
+This disables Gatekeeper system-wide. Remember to re-enable it:
+
+```bash
+sudo spctl --master-enable
+```
+
+**Why This Happens:**
+
+- Ad-hoc code signing (`--sign -`) doesn't use an Apple Developer certificate
+- macOS treats it as an "unidentified developer" app
+- This is normal for personal development apps
+- For distribution, you need a proper Developer ID certificate and notarization
+
 ### App won't open / "damaged" error
 
-macOS may block unsigned apps. To open:
+If the app still shows as "damaged":
 
-1. Right-click the app
-2. Select "Open"
-3. Click "Open" in the dialog
+```bash
+# Remove all extended attributes
+xattr -cr "Shell Script Manager.app"
+
+# Re-sign the app
+codesign --force --deep --sign - "Shell Script Manager.app"
+```
 
 Or disable Gatekeeper temporarily:
 
