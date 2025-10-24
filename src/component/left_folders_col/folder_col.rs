@@ -38,7 +38,7 @@ impl FolderColumn {
         egui::ScrollArea::vertical().show(ui, |ui| {
             // Get direct access to state - we handle locking ourselves!
             crate::with_folder_state(|state| {
-                let folders_vec = (*state.folder_list.read().unwrap()).clone();st
+                let folders_vec = (*state.folder_list.read().unwrap()).clone();
                 let selected_id = *state.selected_folder_id.read().unwrap();
                 let rename_folder = state.folder_to_rename.read().unwrap().as_ref().cloned();
                 let rename_text = state.rename_text.read().unwrap().as_ref().cloned();
