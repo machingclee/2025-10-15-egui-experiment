@@ -4,6 +4,7 @@ use crate::component::left_folders_col::rename_folder_window::rename_folder_wind
 use crate::domain::folder::folder_command_handler::FolderCommand;
 use crate::prisma::scripts_folder::Data;
 use crate::{dispatch_folder_command, with_folder_state_reducer};
+use eframe::epaint::Color32;
 use egui::Ui;
 use std::sync::Arc;
 
@@ -36,32 +37,41 @@ impl<'a> FolderItem<'a> {
             let label_width = (available_width - dots_menu_width).max(0.0);
 
             // Make label expand to fill calculated space
-            ui.add_sized(
+            let btn_response = ui.add_sized(
                 [label_width, ui.available_height() + 5.0],
                 |ui: &mut egui::Ui| {
                     let mut response = None;
                     response = Some(div_with_padding(ui, 4.0, is_selected, |ui| {
                         let div = ui.horizontal(|ui| {
+                            ui.add_space(4.0);
                             ui.label(self.display_name);
                             ui.allocate_space(ui.available_size());
                         });
-                        let rect = div.response.rect;
-                        let response = ui.interact(rect, ui.make_persistent_id(("folder_item", self.folder.id)), egui::Sense::click());
-                        response
+                        div.response
                     }));
-                    let response = response.unwrap();
-                    if response.clicked() {
-                        with_folder_state_reducer(|reducer| {
-                            reducer.set_scripts_of_selected_folder(vec![])
-                        });
-                        dispatch_folder_command(FolderCommand::SelectFolder {
-                            folder_id: self.folder.id,
-                        });
-                    }
+                    let rect = ui.min_rect();
+                    let response = ui.interact(
+                        rect,
+                        ui.make_persistent_id(("folder_item", self.folder.id)),
+                        egui::Sense::click(),
+                    );
                     response
                 },
             );
-
+            if btn_response.hovered() {
+                ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+                ui.painter().rect_filled(
+                    btn_response.rect,
+                    4.0,                                           // corner radius
+                    Color32::from_rgba_premultiplied(0, 0, 0, 30), // hover color
+                );
+            }
+            if btn_response.clicked() {
+                with_folder_state_reducer(|reducer| reducer.set_scripts_of_selected_folder(vec![]));
+                dispatch_folder_command(FolderCommand::SelectFolder {
+                    folder_id: self.folder.id,
+                });
+            }
             self.dots_menu(ui, self.folder);
         });
     }

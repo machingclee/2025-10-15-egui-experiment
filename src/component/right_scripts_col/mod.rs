@@ -1,3 +1,4 @@
+mod confirm_delete_script_impl;
 mod edit_script_window;
 mod new_script_window;
 mod rename_script_window;

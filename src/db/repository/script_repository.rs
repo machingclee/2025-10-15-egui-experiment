@@ -1,6 +1,5 @@
 use crate::prisma::PrismaClient;
 use crate::prisma::shell_script::Data;
-use prisma_client_rust::QueryError;
 
 pub struct ScriptRepository {
     db: &'static PrismaClient,
@@ -124,6 +123,16 @@ impl ScriptRepository {
     }
 
     pub async fn delete_script(&self, script_id: i32) -> prisma_client_rust::Result<()> {
+        // First delete the relationship record to avoid foreign key constraint error
+        self.db
+            .rel_scriptsfolder_shellscript()
+            .delete_many(vec![
+                crate::prisma::rel_scriptsfolder_shellscript::shell_script_id::equals(script_id),
+            ])
+            .exec()
+            .await?;
+
+        // Then delete the script itself
         self.db
             .shell_script()
             .delete_many(vec![crate::prisma::shell_script::id::equals(script_id)])

@@ -1,10 +1,6 @@
-use crate::prisma::scripts_folder::Data;
-use crate::{
-    dispatch_folder_command, domain::folder::folder_command_handler::FolderCommand,
-    with_folder_state,
-};
-use eframe::epaint::Galley;
-use egui::{TextBuffer, Ui};
+use crate::component::common::horizontal_filled_button::horizontal_filled_button;
+use crate::with_folder_state;
+use egui::Ui;
 use std::sync::Arc;
 
 pub struct ScriptsColumn {
@@ -15,6 +11,7 @@ pub struct ScriptsColumn {
     pub editing_command: String,
     pub renaming_script_id: Option<i32>,
     pub renaming_name: String,
+    pub script_to_delete: Option<i32>,
 }
 
 impl ScriptsColumn {
@@ -27,6 +24,7 @@ impl ScriptsColumn {
             editing_command: String::new(),
             renaming_script_id: None,
             renaming_name: String::new(),
+            script_to_delete: None,
         }
     }
 
@@ -55,14 +53,21 @@ impl ScriptsColumn {
         if let Some(renaming_script_id) = self.renaming_script_id {
             self.rename_script_window(ui, renaming_script_id);
         }
+        if let Some(script_id) = self.script_to_delete {
+            self.confirm_delete_script_window(ui, script_id);
+        }
     }
 
     fn add_script_button(&mut self, ui: &mut Ui) {
         with_selected_folder(|selected_folder| {
             ui.vertical_centered(|ui| {
                 let response = ui.add_enabled(selected_folder.is_some(), |ui: &mut egui::Ui| {
-                    ui.button(
-                        egui::RichText::new("Add Script").font(egui::FontId::proportional(18.0)),
+                    horizontal_filled_button(
+                        ui,
+                        ui.available_width(),
+                        26.0,
+                        "Add Script".into(),
+                        "add_script_button".into(),
                     )
                 });
                 if response.clicked() {
@@ -78,11 +83,19 @@ impl ScriptsColumn {
             let display_name = selected_folder_name
                 .as_deref()
                 .unwrap_or("No folder selected");
-            ui.label(
-                egui::RichText::new(format!("Scripts ({})", display_name))
-                    .strong()
-                    .font(egui::FontId::proportional(16.0)),
-            );
+            let icon = if selected_folder.is_some() {
+                "📝" // Script icon when folder is selected
+            } else {
+                "⚠️" // Empty mailbox when no folder selected
+            };
+            ui.horizontal(|ui| {
+                ui.label(egui::RichText::new(icon).font(egui::FontId::proportional(30.0)));
+                ui.label(
+                    egui::RichText::new(display_name)
+                        .strong()
+                        .font(egui::FontId::proportional(16.0)),
+                );
+            });
             ui.separator();
         });
     }

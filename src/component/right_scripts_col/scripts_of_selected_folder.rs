@@ -1,5 +1,6 @@
 use crate::component::right_scripts_col::scripts_col::ScriptsColumn;
 use crate::prisma::shell_script::Data;
+use eframe::epaint::Color32;
 use egui::Ui;
 
 impl ScriptsColumn {
@@ -21,58 +22,33 @@ impl ScriptsColumn {
         let frame = egui::Frame::group(ui.style()).fill(ui.visuals().faint_bg_color);
         let frame_response = frame.show(ui, |ui| {
             ui.horizontal(|ui| {
-                // Manual bold effect by painting text with offset
-                let text = &script.name;
-                let font_id = egui::FontId::proportional(16.0);
-                let color = ui.style().visuals.text_color();
-                
-                let galley = ui.painter().layout_no_wrap(text.to_string(), font_id.clone(), color);
-                let pos = ui.cursor().left_top();
-                
-                // Paint text multiple times with slight offsets to create bold effect
-                for x_offset in [0.0, 0.3, 0.6] {
-                    for y_offset in [0.0, 0.3] {
-                        ui.painter().galley(
-                            pos + egui::vec2(x_offset, y_offset),
-                            galley.clone(),
-                            color,
-                        );
-                    }
-                }
-                
-                // Advance the cursor
-                ui.advance_cursor_after_rect(galley.rect.translate(pos.to_vec2()));
-                
+                // Use built-in bold font
+                ui.label(egui::RichText::new(&script.name).strong().size(16.0));
+
                 if ui.button("Rename").clicked() {
                     self.renaming_script_id = Some(script.id);
                     self.renaming_name = script.name.clone();
                 }
-                ui.with_layout(
-                    egui::Layout::right_to_left(egui::Align::Center),
-                    |ui| {
-                        if ui.button("Execute").clicked() {
-                            // Execute the script command
-                            crate::run_terminal_command(script.command.clone());
-                        }
-                        if ui.button("Edit").clicked() {
-                            self.editing_script_id = Some(script.id);
-                            self.editing_command = script.command.clone();
-                        }
-                        if ui.button("Copy").clicked() {
-                            ui.ctx().copy_text(script.command.clone());
-                        }
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui.button("Execute").clicked() {
+                        // Execute the script command
+                        crate::run_terminal_command(script.command.clone());
+                    }
+                    if ui.button("Edit").clicked() {
+                        self.editing_script_id = Some(script.id);
+                        self.editing_command = script.command.clone();
+                    }
+                    if ui.button("Copy").clicked() {
+                        ui.ctx().copy_text(script.command.clone());
+                    }
 
-                        if ui.button("Delete").clicked() {
-                            crate::dispatch_folder_command(
-                                crate::domain::folder::folder_command_handler::FolderCommand::DeleteScript {
-                                    script_id: script.id,
-                                },
-                            );
-                        }
-                    },
-                );
+                    if ui.button("Delete").clicked() {
+                        self.script_to_delete = Some(script.id);
+                    }
+                });
             });
             ui.label("Command:");
+            ui.add_space(2.0);
             egui::Frame::NONE
                 .fill(ui.visuals().code_bg_color)
                 .show(ui, |ui| {
@@ -86,7 +62,16 @@ impl ScriptsColumn {
                     );
                 });
         });
-
+        let response = &frame_response.response;
+        if response.hovered() {
+            ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+            // Paint a semi-transparent overlay on hover
+            ui.painter().rect_filled(
+                response.rect,
+                4.0,                                           // corner radius
+                Color32::from_rgba_premultiplied(0, 0, 0, 30), // hover color
+            );
+        }
         // Check for double-click on the frame background
         if ui.input(|i| {
             i.pointer

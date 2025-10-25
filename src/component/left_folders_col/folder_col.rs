@@ -1,10 +1,10 @@
+use crate::component::common::horizontal_filled_button::horizontal_filled_button;
 use crate::component::left_folders_col::folder_item::FolderItem;
+use crate::dispatch_folder_command;
 use crate::domain::folder::folder_command_handler::FolderCommand;
 use crate::prisma::scripts_folder::Data;
-use crate::{dispatch_folder_command, with_folder_state_reducer};
-use eframe::emath::{Pos2, Rect};
-use egui::epaint::RectShape;
-use egui::{Color32, Frame, Id, Response, Stroke, Ui};
+use eframe::emath::Pos2;
+use egui::{Color32, Id, Response, Stroke, Ui};
 use prisma_client_rust::bigdecimal::ToPrimitive;
 use std::sync::Arc;
 
@@ -27,11 +27,14 @@ impl FolderColumn {
             .width_range(200.0..=600.0)
             .show(ctx, |ui| {
                 ui.add_space(10.0);
-                ui.label(
-                    egui::RichText::new(format!("{}", "Scripts Folders"))
-                        .strong()
-                        .font(egui::FontId::proportional(16.0)),
-                );
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new("📁").font(egui::FontId::proportional(30.0)));
+                    ui.label(
+                        egui::RichText::new("Script Folders")
+                            .strong()
+                            .font(egui::FontId::proportional(16.0)),
+                    );
+                });
                 ui.separator();
                 ui.add_space(10.0);
 
@@ -45,78 +48,57 @@ impl FolderColumn {
 
     fn folders(ui: &mut Ui) {
         // Remove stroke for all widget states
-
-        let frame_without_stroke = Self::created_frame_without_stroke(ui);
-
-        let (_, dropped_payload) = ui.dnd_drop_zone::<Location, ()>(frame_without_stroke, |ui| {
-            egui::Frame::new()
-                .fill(ui.visuals().panel_fill)
-                .stroke(Stroke::NONE)
-                .corner_radius(4.0)
-                .inner_margin(12.0)
-                .show(ui, |ui| {
-                    egui::ScrollArea::vertical().show(ui, |ui| {
-                        // Get direct access to state - we handle locking ourselves!
-                        crate::with_folder_state(|state| {
-                            let folders_vec = (*state.folder_list.read().unwrap()).clone();
-                            let selected_id = *state.selected_folder_id.read().unwrap();
-                            let rename_folder =
-                                state.folder_to_rename.read().unwrap().as_ref().cloned();
-                            let rename_text = state.rename_text.read().unwrap().as_ref().cloned();
-
-                            let mut from: Option<Location> = None;
-                            let mut to = None;
-
-                            if folders_vec.is_empty() {
-                                ui.label("No folders yet...");
-                            } else {
-                                for (row_idx, folder) in (&*folders_vec).into_iter().enumerate() {
-                                    let (item_location, response) = Self::render_dnd_folder_item(
-                                        ui,
-                                        selected_id,
-                                        &rename_folder,
-                                        &rename_text,
-                                        row_idx,
-                                        &folder,
-                                    );
-
-                                    if let (Some(pointer), Some(hovered_payload)) = (
-                                        ui.input(|i| i.pointer.interact_pos()),
-                                        response.dnd_hover_payload::<Location>(),
-                                    ) {
-                                        Self::handle_drop_event(
-                                            ui,
-                                            from,
-                                            to,
-                                            row_idx,
-                                            item_location,
-                                            response,
-                                            pointer,
-                                            hovered_payload,
-                                        );
-                                    }
-                                }
-                            }
-                        });
-                    });
-                });
-        });
-    }
-
-    fn created_frame_without_stroke(ui: &mut Ui) -> Frame {
-        ui.visuals_mut().widgets.noninteractive.bg_stroke = Stroke::NONE;
-        ui.visuals_mut().widgets.inactive.bg_stroke = Stroke::NONE;
-        ui.visuals_mut().widgets.hovered.bg_stroke = Stroke::NONE;
-        ui.visuals_mut().widgets.active.bg_stroke = Stroke::NONE;
-
-        let frame = egui::Frame::new()
+        egui::Frame::new()
             .fill(ui.visuals().panel_fill)
             .stroke(Stroke::NONE)
             .corner_radius(4.0)
-            .inner_margin(0.0);
+            .inner_margin(12.0)
+            .show(ui, |ui| {
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    // Get direct access to state - we handle locking ourselves!
+                    crate::with_folder_state(|state| {
+                        let folders_vec = (*state.folder_list.read().unwrap()).clone();
+                        let selected_id = *state.selected_folder_id.read().unwrap();
+                        let rename_folder =
+                            state.folder_to_rename.read().unwrap().as_ref().cloned();
+                        let rename_text = state.rename_text.read().unwrap().as_ref().cloned();
 
-        ui.visuals_mut().widgets.noninteractive.bg_fill = Color32::WHITE;
-        frame
+                        let mut from: Option<Location> = None;
+                        let mut to = None;
+
+                        if folders_vec.is_empty() {
+                            ui.label("No folders yet...");
+                        } else {
+                            for (row_idx, folder) in (&*folders_vec).into_iter().enumerate() {
+                                let (item_location, response) = Self::render_dnd_folder_item(
+                                    ui,
+                                    selected_id,
+                                    &rename_folder,
+                                    &rename_text,
+                                    row_idx,
+                                    &folder,
+                                );
+
+                                if let (Some(pointer), Some(hovered_payload)) = (
+                                    ui.input(|i| i.pointer.interact_pos()),
+                                    response.dnd_hover_payload::<Location>(),
+                                ) {
+                                    Self::handle_drop_event(
+                                        ui,
+                                        from,
+                                        to,
+                                        row_idx,
+                                        item_location,
+                                        response,
+                                        pointer,
+                                        hovered_payload,
+                                    );
+                                }
+                            }
+                        }
+                    });
+                });
+            });
     }
 
     fn handle_drop_event(
@@ -226,12 +208,19 @@ impl FolderColumn {
     }
 
     pub fn add_folder_button(ui: &mut Ui) {
-        ui.vertical_centered(|ui| {
-            let response =
-                ui.button(egui::RichText::new("Add Folder").font(egui::FontId::proportional(18.0)));
-            if response.clicked() {
-                dispatch_folder_command(FolderCommand::CreateFolder {});
-            }
-        });
+        let button_height = 24.0; // Fixed height for the button
+        let response = horizontal_filled_button(
+            ui,
+            ui.available_width() - 34.0,
+            button_height,
+            "Add Folder".into(),
+            "Add Folder".into(),
+        );
+
+        // Set cursor to pointer and background color when hovering
+
+        if response.clicked() {
+            dispatch_folder_command(FolderCommand::CreateFolder {});
+        }
     }
 }
