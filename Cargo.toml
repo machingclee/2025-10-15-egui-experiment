@@ -28,6 +28,7 @@ eframe = { version = "0.33.0", default-features = false, features = [
 ] }
 log = "0.4.27"
 font-loader = "0.11"
+whoami = "1.5"
 
 # You only need serde if you want app persistence:
 serde = { version = "1.0.219", features = ["derive"] }

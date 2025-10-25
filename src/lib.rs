@@ -13,24 +13,82 @@ where
 
 pub fn run_terminal_command(command: String) {
     spawn_task(async move {
-        let output = tokio::process::Command::new("sh")
+        // Get the user's home directory
+        let home = std::env::var("HOME").unwrap_or_else(|_| {
+            dirs::home_dir()
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_else(|| "/Users".to_string())
+        });
+
+        // Detect the user's shell from /etc/passwd or use zsh as default
+        let shell = std::env::var("SHELL").unwrap_or_else(|_| {
+            // Try to read from /etc/passwd
+            std::fs::read_to_string("/etc/passwd")
+                .ok()
+                .and_then(|content| {
+                    content.lines().find_map(|line| {
+                        if line.contains(&home) {
+                            line.split(':').last().map(|s| s.to_string())
+                        } else {
+                            None
+                        }
+                    })
+                })
+                .unwrap_or_else(|| "/bin/zsh".to_string())
+        });
+
+        #[cfg(debug_assertions)]
+        println!("Using shell: {} for command: {}", shell, command);
+
+        // Build the command that sources the shell config files before running
+        let wrapped_command = if shell.contains("zsh") {
+            format!(
+                "source ~/.zshrc 2>/dev/null; source ~/.zprofile 2>/dev/null; {}",
+                command
+            )
+        } else if shell.contains("bash") {
+            format!(
+                "source ~/.bash_profile 2>/dev/null; source ~/.bashrc 2>/dev/null; {}",
+                command
+            )
+        } else {
+            command.clone()
+        };
+
+        let output = tokio::process::Command::new(&shell)
+            .arg("-l") // Login shell
             .arg("-c")
-            .arg(&command)
+            .arg(&wrapped_command)
+            .env("HOME", &home) // Ensure HOME is set
+            .env(
+                "USER",
+                std::env::var("USER").unwrap_or_else(|_| whoami::username()),
+            )
             .output()
             .await;
+
         match output {
             Ok(output) => {
                 let stdout = String::from_utf8_lossy(&output.stdout);
                 let stderr = String::from_utf8_lossy(&output.stderr);
-                println!("Command executed: {}", command);
-                if !stdout.is_empty() {
-                    println!("Output: {}", stdout);
+
+                #[cfg(debug_assertions)]
+                {
+                    println!("Command executed: {}", command);
+                    if !stdout.is_empty() {
+                        println!("Output: {}", stdout);
+                    }
+                    if !stderr.is_empty() {
+                        eprintln!("Error: {}", stderr);
+                    }
                 }
-                if !stderr.is_empty() {
-                    eprintln!("Error: {}", stderr);
+
+                // Show errors in both debug and release mode
+                if !output.status.success() && !stderr.is_empty() {
+                    eprintln!("Command '{}' failed: {}", command, stderr);
                 }
             }
-            Err(e) => eprintln!("Failed to execute command: {:?}", e),
+            Err(e) => eprintln!("Failed to execute command '{}': {:?}", command, e),
         }
     });
 }
