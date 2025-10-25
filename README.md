@@ -28,13 +28,19 @@ manage the UI state. Fortunately rust has built-in mechanism for channel and mes
 - SQLite database for persistence
 - Automatic database initialization
 
-## Database Setup
+## Database 
 
+### Schema Design
+
+<img width="708" height="497" alt="image" src="https://github.com/user-attachments/assets/bd10c18d-2eb8-4060-a6f9-79eccedc0855" />
+
+
+### Setup 
 This desktop application automatically creates and initializes the SQLite database on first run. No manual setup
 required!
 
 The database file (`database.db`) is created in the application directory. The app includes embedded migration
-scripts that run automatically to set up the required tables:
+scripts that run automatically to set up the required tables.
 
 For production deployment, db migration history is embedded in the binary and will be applied on first run. The `SQLite`
 db
@@ -61,10 +67,4 @@ cargo run
 ```
 
 The app will automatically create the database and tables on first launch.
-
-#### Option 3: Pre-built Database
-
-- Create the database locally with migrations
-- Include the `dev-database.db` file in your deployment package
-- The app will use the existing database without running migrations
 
