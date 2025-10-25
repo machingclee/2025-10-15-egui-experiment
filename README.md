@@ -1,6 +1,7 @@
 # Video Demo
 
-https://github.com/user-attachments/assets/0871fb9b-8043-46d9-8032-f8f79364e810
+<img width="2048" height="1255" alt="image" src="https://github.com/user-attachments/assets/b2c40aac-6dab-4f7d-8c5b-fe2dbed7de27" />
+
 
 ### Production Deployment
 
