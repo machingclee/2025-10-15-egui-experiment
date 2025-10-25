@@ -1,4 +1,4 @@
-# Video Demo
+# Shell Script Manager
 
 <img width="2048" height="1255" alt="image" src="https://github.com/user-attachments/assets/b2c40aac-6dab-4f7d-8c5b-fe2dbed7de27" />
 
