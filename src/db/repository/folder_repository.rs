@@ -1,3 +1,4 @@
+use crate::prisma;
 use crate::prisma::PrismaClient;
 use crate::prisma::application_state::Data as AppStateData;
 use crate::prisma::scripts_folder::Data;
@@ -5,6 +6,11 @@ use prisma_client_rust::QueryError;
 
 pub struct FolderRepository {
     db: &'static PrismaClient,
+}
+
+pub struct FolderOrderUpdate {
+    pub folder_id: i32,
+    pub new_ordering: i32,
 }
 
 impl FolderRepository {
@@ -19,16 +25,24 @@ impl FolderRepository {
     }
 
     pub async fn get_all_folders(&self) -> prisma_client_rust::Result<Vec<Data>> {
-        self.db.scripts_folder().find_many(vec![]).exec().await
+        self.db
+            .scripts_folder()
+            .find_many(vec![])
+            .order_by(crate::prisma::scripts_folder::ordering::order(
+                prisma_client_rust::Direction::Asc,
+            ))
+            .exec()
+            .await
     }
 
     pub async fn create_script_folder(
         &self,
         folder_name: &String,
+        ordering: i32,
     ) -> prisma_client_rust::Result<Data> {
         self.db
             .scripts_folder()
-            .create(folder_name.clone(), 0, vec![])
+            .create(folder_name.clone(), ordering, vec![])
             .exec()
             .await
     }
@@ -107,6 +121,51 @@ impl FolderRepository {
             .exec()
             .await?;
 
+        Ok(())
+    }
+    pub async fn reorder_folders(
+        &self,
+        from_index: usize,
+        to_index: usize,
+    ) -> Result<(), QueryError> {
+        let mut folders = self.get_all_folders().await?;
+        if from_index >= folders.len() || to_index >= folders.len() {
+            return Ok(());
+        }
+        let folder = folders.remove(from_index);
+        folders.insert(to_index, folder);
+
+        for (ordering, folder) in folders.iter().enumerate() {
+            self.db
+                .scripts_folder()
+                .update_many(
+                    vec![crate::prisma::scripts_folder::id::equals(folder.id)],
+                    vec![crate::prisma::scripts_folder::ordering::set(
+                        ordering as i32,
+                    )],
+                )
+                .exec()
+                .await?;
+        }
+        Ok(())
+    }
+
+    pub async fn batch_order_update(
+        &self,
+        order_updates: Vec<FolderOrderUpdate>,
+    ) -> Result<(), QueryError> {
+        for (update) in order_updates {
+            let folder_id = update.folder_id;
+            let new_ordering = update.new_ordering;
+            self.db
+                .scripts_folder()
+                .update_many(
+                    vec![crate::prisma::scripts_folder::id::equals(folder_id)],
+                    vec![crate::prisma::scripts_folder::ordering::set(new_ordering)],
+                )
+                .exec()
+                .await?;
+        }
         Ok(())
     }
 }

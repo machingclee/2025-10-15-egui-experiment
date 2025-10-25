@@ -1,4 +1,4 @@
-use crate::db::repository::folder_repository::FolderRepository;
+use crate::db::repository::folder_repository::{FolderOrderUpdate, FolderRepository};
 use crate::db::repository::script_repository::ScriptRepository;
 use crate::domain::folder::folder_event_handler::FolderEvent;
 use prisma_client_rust::bigdecimal::ToPrimitive;
@@ -33,6 +33,10 @@ pub enum FolderCommand {
     DeleteScript {
         script_id: i32,
     },
+    ReorderFolders {
+        from_index: i32,
+        to_index: i32,
+    },
 }
 
 pub struct FolderCommandHandler {
@@ -48,7 +52,7 @@ impl FolderCommandHandler {
         }
     }
 
-    pub fn handle(&self, wrapped: crate::WrappedFolderCommand) {
+    pub fn handle(&self, wrapped: crate::WrappedFolderCommand) -> Result<(), ()> {
         let command = wrapped.command;
         let callback = wrapped.callback;
 
@@ -58,12 +62,16 @@ impl FolderCommandHandler {
                 let folder_repository = self.folder_repository.clone();
                 crate::spawn_task(async move {
                     let total_num_folders = db.scripts_folder().count(vec![]).exec().await.unwrap();
-                    let folder_name = format!("Folder {}", total_num_folders + 1);
+                    let folder_name = "New Collection".to_string();
 
-                    match folder_repository.create_script_folder(&folder_name).await {
+                    match folder_repository
+                        .create_script_folder(&folder_name, total_num_folders.to_i32().unwrap())
+                        .await
+                    {
                         Ok(_) => {
                             crate::dispatch_folder_event(FolderEvent::FolderAdded {
                                 name: folder_name.clone(),
+                                ordering: total_num_folders.to_i32().unwrap(),
                             });
                         }
                         Err(e) => eprintln!("Failed to add folder: {:?}", e),
@@ -117,24 +125,50 @@ impl FolderCommandHandler {
                 });
             }
             FolderCommand::DeleteFolder { folder_id } => {
+                let folder_repository = self.folder_repository.clone();
                 crate::spawn_task(async move {
-                    let db = crate::db::get_db::get_db();
-                    let result: Result<(), prisma_client_rust::QueryError> = db
-                        .scripts_folder()
-                        .delete(crate::prisma::scripts_folder::id::equals(folder_id))
-                        .exec()
-                        .await
-                        .map(|_| ());
-
-                    match result {
+                    match folder_repository.delete_script_folder(folder_id).await {
                         Ok(_) => {
                             println!(
                                 "Folder with id {} and related data deleted successfully",
                                 folder_id
                             );
-                            crate::dispatch_folder_event(FolderEvent::FolderDeleted { folder_id });
                         }
                         Err(e) => eprintln!("Failed to delete folder: {:?}", e),
+                    }
+
+                    let all_folders = folder_repository.get_all_folders().await;
+                    match all_folders {
+                        Ok(folders) => {
+                            let mut sorted_folders = folders;
+                            sorted_folders.sort_by_key(|f| f.ordering);
+                            for (index, folder) in sorted_folders.iter_mut().enumerate() {
+                                folder.ordering = index as i32;
+                            }
+                            let order_update_param = sorted_folders
+                                .iter()
+                                .map(|f| FolderOrderUpdate {
+                                    folder_id: f.id.to_i32().unwrap(),
+                                    new_ordering: f.ordering,
+                                })
+                                .collect::<Vec<FolderOrderUpdate>>();
+
+                            match folder_repository
+                                .batch_order_update(order_update_param)
+                                .await
+                            {
+                                Ok(_) => {
+                                    crate::dispatch_folder_event(FolderEvent::FolderDeleted {
+                                        folder_id,
+                                    });
+                                    println!(
+                                        "Folder orderings updated successfully after deletion"
+                                    );
+                                }
+                                Err(e) => eprintln!("Failed to update folder orderings: {:?}", e),
+                            }
+                        }
+                        Err(e) => eprintln!("Failed to retrieve all folders: {:?}", e),
                     }
 
                     if let Some(cb) = callback {
@@ -305,6 +339,40 @@ impl FolderCommandHandler {
                     }
                 });
             }
+            FolderCommand::ReorderFolders {
+                from_index: from_index,
+                to_index: to_index,
+            } => {
+                let folder_repository = self.folder_repository.clone();
+                crate::spawn_task(async move {
+                    let moving_downwards = from_index < to_index;
+                    let index_bound =
+                        (folder_repository.get_all_folders().await.unwrap().len() - 1).max(0);
+
+                    match folder_repository
+                        .reorder_folders(
+                            from_index.to_usize().unwrap(),
+                            to_index.to_usize().unwrap(),
+                        )
+                        .await
+                    {
+                        Ok(_) => {
+                            crate::dispatch_folder_event(FolderEvent::FoldersReordered {
+                                from_index,
+                                to_index: to_index.to_i32().unwrap(),
+                            });
+                        }
+                        Err(e) => eprintln!("Failed to reorder folders: {:?}", e),
+                    }
+                    if let Some(cb) = callback {
+                        let _ = crate::EVENT_SENDER
+                            .get()
+                            .unwrap()
+                            .send(crate::AppMessage::Callback(cb));
+                    }
+                });
+            }
         }
+        Ok(())
     }
 }

@@ -53,9 +53,7 @@ impl App {
             let folders = db.scripts_folder().find_many(vec![]).exec().await;
             match folders {
                 Ok(folders) => {
-                    crate::with_folder_state(|state| {
-                        *state.folder_list.write().unwrap() = Arc::new(folders);
-                    });
+                    crate::with_folder_state_reducer(|reducer| reducer.set_folder_list(folders));
                 }
                 Err(e) => eprintln!("Failed to load folders: {:?}", e),
             }

@@ -1,3 +1,4 @@
+use crate::component::common::div_with_padding::div_with_padding;
 use crate::component::left_folders_col::confirm_delete_folder_window::confirm_delete_folder_window;
 use crate::component::left_folders_col::rename_folder_window::rename_folder_window;
 use crate::domain::folder::folder_command_handler::FolderCommand;
@@ -39,10 +40,15 @@ impl<'a> FolderItem<'a> {
                 [label_width, ui.available_height() + 5.0],
                 |ui: &mut egui::Ui| {
                     let mut response = None;
-                    ui.horizontal(|ui| {
-                        response = Some(ui.selectable_label(is_selected, self.display_name));
-                        ui.allocate_space(ui.available_size());
-                    });
+                    response = Some(div_with_padding(ui, 4.0, is_selected, |ui| {
+                        let div = ui.horizontal(|ui| {
+                            ui.label(self.display_name);
+                            ui.allocate_space(ui.available_size());
+                        });
+                        let rect = div.response.rect;
+                        let response = ui.interact(rect, ui.make_persistent_id(("folder_item", self.folder.id)), egui::Sense::click());
+                        response
+                    }));
                     let response = response.unwrap();
                     if response.clicked() {
                         with_folder_state_reducer(|reducer| {

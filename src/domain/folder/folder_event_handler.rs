@@ -7,13 +7,14 @@ use crate::with_folder_state_reducer;
 
 #[derive(Debug)]
 pub enum FolderEvent {
-    FolderAdded { name: String },
+    FolderAdded { name: String, ordering: i32 },
     FolderSelected { folder_id: i32 },
     FolderDeleted { folder_id: i32 },
     ScriptAdded { folder_id: i32 },
     ScriptUpdated { script_id: i32 },
     FolderRenamed { folder_id: i32, new_name: String },
     ScriptDeleted { script_id: i32 },
+    FoldersReordered { from_index: i32, to_index: i32 },
 }
 
 pub struct FolderEventHandler {
@@ -33,7 +34,12 @@ impl FolderEventHandler {
         let folder_repository = self.folder_repository.clone();
         let script_repository = self.script_repository.clone();
         match event {
-            FolderEvent::FolderAdded { name } => {
+            FolderEvent::FoldersReordered{from_index, to_index} => {
+                with_folder_state_reducer(
+                    |reducer| reducer.insert_folder_into_index(from_index as usize, to_index as usize)
+                )
+            }
+            FolderEvent::FolderAdded { name, ordering } => {
                 // fetch all folder and set it into the state
                 println!(
                     "Folder added event received for folder: {}, now refetch all folders",
@@ -136,8 +142,11 @@ impl FolderEventHandler {
             FolderEvent::ScriptDeleted { script_id } => {
                 println!("Script deleted event received for script id: {}", script_id);
                 // just remove the script from UI state
-                crate::with_folder_state_reducer(|r| r.delete_script_from_selected_folder(script_id));
+                crate::with_folder_state_reducer(|r| {
+                    r.delete_script_from_selected_folder(script_id)
+                });
             }
         };
     }
+    
 }

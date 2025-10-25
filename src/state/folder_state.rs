@@ -1,6 +1,7 @@
 use std::sync::{Arc, LazyLock, RwLock};
 
 use crate::prisma;
+use prisma_client_rust::bigdecimal::ToPrimitive;
 
 #[derive(Default)]
 pub struct FoldersState {
@@ -30,8 +31,8 @@ impl<'a> FolderReducer<'a> {
         let updated_folders: Vec<_> = folders.iter().filter(|f| f.id != id).cloned().collect();
         *folders = Arc::new(updated_folders);
     }
-    
-    pub fn delete_script_from_selected_folder (&self, script_id: i32) {
+
+    pub fn delete_script_from_selected_folder(&self, script_id: i32) {
         let mut scripts = self.state.scripts_of_selected_folder.write().unwrap();
         let updated_scripts: Vec<_> = scripts
             .iter()
@@ -53,7 +54,9 @@ impl<'a> FolderReducer<'a> {
     }
 
     pub fn set_folder_list(&self, folders: Vec<prisma::scripts_folder::Data>) {
-        *self.state.folder_list.write().unwrap() = Arc::new(folders);
+        let mut sorted_folders = folders;
+        sorted_folders.sort_by(|a, b| a.ordering.to_i32().unwrap().cmp(&b.ordering.to_i32().unwrap()));
+        *self.state.folder_list.write().unwrap() = Arc::new(sorted_folders);
     }
 
     pub fn set_scripts_of_selected_folder(&self, scripts: Vec<prisma::shell_script::Data>) {
@@ -62,5 +65,19 @@ impl<'a> FolderReducer<'a> {
 
     pub fn set_app_state(&self, app_state: Option<prisma::application_state::Data>) {
         *self.state.app_state.write().unwrap() = Arc::new(app_state);
+    }
+
+    pub fn insert_folder_into_index(&self, from_folder_index: usize, to_folder_index: usize) {
+        let mut folders = self.state.folder_list.write().unwrap();
+        let folders_vec = Arc::make_mut(&mut *folders);
+        if from_folder_index < 0
+            || to_folder_index < 0
+            || from_folder_index as usize >= folders_vec.len()
+            || to_folder_index as usize >= folders_vec.len()
+        {
+            return;
+        }
+        let folder = folders_vec.remove(from_folder_index as usize);
+        folders_vec.insert(to_folder_index as usize, folder);
     }
 }
